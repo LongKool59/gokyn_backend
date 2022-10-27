@@ -12,6 +12,7 @@ namespace Application.Interfaces
     public interface IApplicationDbContext
     {
         DbSet<Product> Products { get; set; }
+        DbSet<ApplicationUser> ApplicationUsers { get; set; }
         Task<int> SaveChangesAsync();
     }
 }

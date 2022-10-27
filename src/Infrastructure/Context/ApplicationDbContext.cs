@@ -17,6 +17,7 @@ namespace Infrastructure.Context
         {
         }
         public DbSet<Product> Products { get; set; }
+        public DbSet<ApplicationUser> ApplicationUsers { get; set; }
         public async Task<int> SaveChangesAsync() => await base.SaveChangesAsync();
     }
 }

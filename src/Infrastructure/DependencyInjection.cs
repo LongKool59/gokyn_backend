@@ -24,7 +24,6 @@ namespace Infrastructure
     {
         public static async Task AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
-            await SeedUserData(services);
             ConfigureJWT(services, configuration);
         }
 

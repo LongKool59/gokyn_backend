@@ -1,10 +1,10 @@
 ﻿using Application.Interfaces;
 using Domain.Identity;
-using static Infrastructure.Constants.Authorization;
+using Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Infrastructure.Identity;
+using static Infrastructure.Constants.Authorization;
 
 namespace WebApi.Controllers.v1
 {
@@ -18,24 +18,60 @@ namespace WebApi.Controllers.v1
         {
             _userService = userService;
         }
+
         [HttpPost("register")]
         public async Task<IActionResult> RegisterAsync(RegisterModel model)
         {
             var result = await _userService.RegisterAsync(model);
             return Ok(result);
         }
-        [HttpPost("token")]
-        public async Task<IActionResult> GetTokenAsync(TokenRequestModel model)
+
+        [HttpPost("login")]
+        public async Task<IActionResult> LoginAsync(TokenRequestModel model)
         {
-            var result = await _userService.GetTokenAsync(model);
+            var result = await _userService.LoginAsync(model);
+            JWTHelper.SetRefreshTokenInCookie(Response, result.RefreshToken);
             return Ok(result);
         }
-        [HttpPost("addrole")]
+
+        [HttpPost("add-role")]
         [Authorize(Roles = "Administrator")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<string> AddRoleAsync(AddRoleModel model)
         {
-            var result = await _userService.AddRoleAsync(model);
-            return result;
+            return await _userService.AddRoleAsync(model);
+        }
+
+        [HttpGet("refresh-token")]
+        public async Task<IActionResult> RefreshTokenAsync()
+        {
+            string? refreshToken = Request.Cookies["refreshToken"];
+            AuthenticationModel response = await _userService.RefreshTokenAsync(refreshToken);
+            if (!string.IsNullOrEmpty(response.RefreshToken))
+                JWTHelper.SetRefreshTokenInCookie(Response, response.RefreshToken);
+            return Ok(response);
+        }
+
+        [Authorize]
+        [HttpGet("user-tokens/{id}")]
+        public async Task<IActionResult> GetUserRefreshTokens(string id)
+        {
+            var user = await _userService.GetUserById(id);
+            return Ok(user.RefreshTokens);
+        }
+
+        [HttpPost("revoke-token")]
+        public async Task<IActionResult> RevokeToken(RevokeTokenModel model)
+        {
+            // accept token from request body or cookie
+            var token = model.Token == null ? Request.Cookies["refreshToken"] : model.Token;
+            if (string.IsNullOrEmpty(token))
+                return BadRequest(new { message = "Token is required" });
+            var response = await _userService.RevokeToken(token);
+            if (!response)
+                return NotFound(new { message = "Token not found" });
+            return Ok(new { message = "Token revoked" });
         }
     }
 }
